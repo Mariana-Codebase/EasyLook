@@ -158,7 +158,7 @@ function AdminRow({ garment, onEdit }: { garment: Garment; onEdit: () => void })
     <tr className={garment.active ? undefined : 'is-inactive'}>
       <th scope="row">
         <span className="cell-garment">
-          <GarmentGlyph category={garment.category} color={garment.color} size={28} />
+          <GarmentGlyph category={garment.category} color={garment.color} name={garment.name} size={28} />
           {garment.name}
         </span>
       </th>

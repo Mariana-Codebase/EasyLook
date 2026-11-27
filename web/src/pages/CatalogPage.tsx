@@ -298,7 +298,7 @@ function GarmentTile({ garment, active }: { garment: Garment; active: OutfitSumm
   return (
     <li className="garment">
       <div className="garment-figure">
-        <GarmentGlyph category={garment.category} color={garment.color} size={84} />
+        <GarmentGlyph category={garment.category} color={garment.color} name={garment.name} size={84} />
       </div>
       <div className="garment-info">
         <h3 className="garment-name">{garment.name}</h3>

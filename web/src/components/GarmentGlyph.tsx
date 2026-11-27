@@ -58,17 +58,48 @@ const shapes: Record<Category, { body: string; details?: string }> = {
   },
 }
 
+/** Accessories differ too much for one shape, so the garment name picks a variant. */
+const accessoryShapes: { match: RegExp; body: string; details?: string; stroke?: boolean }[] = [
+  {
+    match: /arete|pendiente/i,
+    body: 'M34 30 a6 6 0 1 1 0.1 0 Z M66 30 a6 6 0 1 1 0.1 0 Z M34 52 a11 13 0 1 1 0.1 0 Z M66 52 a11 13 0 1 1 0.1 0 Z',
+    details: 'M34 36 L34 39 M66 36 L66 39',
+  },
+  {
+    match: /sombrero/i,
+    body: 'M8 78 Q50 96 92 78 Q80 70 68 70 L64 44 Q50 36 36 44 L32 70 Q20 70 8 78 Z',
+    details: 'M33 64 Q50 70 67 64',
+  },
+  {
+    match: /gorra/i,
+    body: 'M24 72 Q24 40 52 40 Q78 40 78 70 L94 76 Q94 82 86 82 L24 82 Z',
+    details: 'M52 40 L52 72',
+  },
+  {
+    match: /cintur/i,
+    body: 'M6 52 L94 52 L94 68 L6 68 Z',
+    details: 'M58 48 L76 48 L76 72 L58 72 Z M64 60 L84 60',
+  },
+  {
+    match: /pañoleta|bufanda/i,
+    body: 'M14 30 L86 30 L50 98 Z',
+    details: 'M30 30 L50 70 L70 30',
+  },
+]
+
 interface Props {
   category: Category
   color: string
+  name?: string
   size?: number
   title?: string
 }
 
 /** Flat silhouette of a garment painted in its catalog color. */
-export function GarmentGlyph({ category, color, size = 96, title }: Props) {
+export function GarmentGlyph({ category, color, name = '', size = 96, title }: Props) {
   const patternId = useId()
-  const shape = shapes[category]
+  const variant = category === 'accessory' ? accessoryShapes.find((a) => a.match.test(name)) : undefined
+  const shape = variant ?? shapes[category]
   const printed = color === 'estampado'
   const fill = printed ? `url(#${CSS.escape(patternId)})` : swatchFor(color)
 
@@ -94,7 +125,7 @@ export function GarmentGlyph({ category, color, size = 96, title }: Props) {
       )}
       <path d={shape.body} fill={fill} className="glyph-body" />
       {shape.details && <path d={shape.details} className="glyph-detail" fill="none" />}
-      {category === 'accessory' && <path d={shapes.accessory.details} className="glyph-handle" fill="none" />}
+      {category === 'accessory' && !variant && <path d={shapes.accessory.details} className="glyph-handle" fill="none" />}
     </svg>
   )
 }

@@ -35,7 +35,7 @@ export function Rail({ pieces, onRemove, removingId, emptyHint, size = 'large' }
           <path d="M30 2 a4 4 0 0 1 4 4 c0 2-2 3-4 4 v3 L57 24 H3 L30 13" fill="none" />
         </svg>
       )}
-      <GarmentGlyph category={piece.category} color={piece.color} size={glyphSize} />
+      <GarmentGlyph category={piece.category} color={piece.color} name={piece.name} size={glyphSize} />
       <div className="rail-tag">
         <span className="rail-name">{piece.name}</span>
         <span className="rail-meta">

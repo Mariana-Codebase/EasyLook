@@ -231,7 +231,7 @@ function Suggestions({ outfit }: { outfit: Outfit }) {
       <ul>
         {options.map((g) => (
           <li key={g.id}>
-            <GarmentGlyph category={g.category} color={g.color} size={44} />
+            <GarmentGlyph category={g.category} color={g.color} name={g.name} size={44} />
             <div>
               <span className="suggestion-name">{g.name}</span>
               <span className="suggestion-meta">
