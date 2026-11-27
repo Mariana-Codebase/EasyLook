@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: easylook
+    ports:
+      - "5432:5432"
+    volumes:
+      - easylook-data:/var/lib/postgresql/data
+      - ./scripts/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d easylook"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/easylook
+      JWT_SECRET: ${JWT_SECRET:-local-docker-secret-replace-before-deploying-0001}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  easylook-data:

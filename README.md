@@ -4,6 +4,24 @@
 **Tipo:** API REST  
 **Propósito:** proyecto académico de Computación Orientada a Servicios
 
+## Puesta en marcha
+
+La API está implementada en este repositorio. Para correrla en local hacen falta Node.js 20 o superior y PostgreSQL 16:
+
+```bash
+npm install
+cp .env.example .env      # cambia JWT_SECRET
+docker compose up -d db   # o usa un PostgreSQL propio y ajusta DATABASE_URL
+npm run db:reset          # migraciones y catálogo ficticio
+npm run dev
+```
+
+La documentación interactiva queda en `http://localhost:3000/docs`. El manual de instalación, el recorrido de demostración con las cuentas de prueba, la explicación de Look Match y las decisiones de implementación están en [docs/MANUAL.md](docs/MANUAL.md). La especificación OpenAPI exportada está en [docs/openapi.json](docs/openapi.json).
+
+```bash
+npm test                  # pruebas unitarias y de integración
+```
+
 ## 1. Resumen
 
 **EasyLook** es una API REST para descubrir prendas de tiendas simuladas y crear outfits para una ocasión sin realizar pagos ni gestionar inventario real. Una persona explora un catálogo, reúne prendas de distintas tiendas en un outfit y lo guarda en su look book personal.
