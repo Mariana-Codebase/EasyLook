@@ -18,6 +18,14 @@ describe('stores and occasions', () => {
     expect(res.body.data[0]).toHaveProperty('garmentCount');
   });
 
+  it('counts the active garments of each store', async () => {
+    const res = await api().get(`${API}/stores`).query({ q: 'Atelier Norte' }).expect(200);
+    const atelier = res.body.data[0];
+    const garments = await api().get(`${API}/garments`).query({ storeId: atelier.id, limit: 100 }).expect(200);
+    expect(atelier.garmentCount).toBe(garments.body.meta.total);
+    expect(atelier.garmentCount).toBeGreaterThan(0);
+  });
+
   it('filters stores by style', async () => {
     const res = await api().get(`${API}/stores`).query({ style: 'boho' }).expect(200);
     expect(res.body.data.map((s: { name: string }) => s.name)).toEqual(['Lino & Sal']);

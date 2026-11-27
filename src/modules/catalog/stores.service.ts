@@ -1,13 +1,15 @@
 import { and, asc, count, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { garments, stores, type StoreRow } from '../../db/schema';
+import { stores, type StoreRow } from '../../db/schema';
 import { AppError, ErrorCode, isUniqueViolation } from '../../lib/errors';
 import { offsetOf, toPage, type Page } from '../../lib/pagination';
 import type { CreateStoreBody, StoreListQuery, StoreResponse, UpdateStoreBody } from './catalog.schemas';
 
+// Columns are qualified by hand: inside a correlated subquery an unqualified "id"
+// would resolve to garments.id instead of the outer stores.id.
 const activeGarmentCount = sql<number>`(
-  select count(*)::int from ${garments}
-  where ${garments.storeId} = ${stores.id} and ${garments.active} = true
+  select count(*)::int from "garments" as g
+  where g."store_id" = "stores"."id" and g."active" = true
 )`;
 
 function toStoreResponse(row: StoreRow & { garmentCount: number }): StoreResponse {
