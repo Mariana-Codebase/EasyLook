@@ -138,6 +138,8 @@ export function AdminPage() {
 }
 
 function AdminRow({ garment, onEdit }: { garment: Garment; onEdit: () => void }) {
+  const occasions = useOccasions()
+  const occasionNames = new Map(occasions.data?.map((o) => [o.code, o.name]))
   const queryClient = useQueryClient()
   const { notify, fail } = useToast()
   const toggle = useMutation({
@@ -165,15 +167,17 @@ function AdminRow({ garment, onEdit }: { garment: Garment; onEdit: () => void })
       <td>{garment.store.name}</td>
       <td>{categoryLabel[garment.category]}</td>
       <td className="num">{formatCop(garment.priceCop)}</td>
-      <td>{garment.occasions.join(', ')}</td>
+      <td>{garment.occasions.map((code) => occasionNames.get(code) ?? code).join(', ')}</td>
       <td>{garment.active ? 'Activa' : 'Desactivada'}</td>
-      <td className="actions">
-        <button type="button" className="link-button" onClick={onEdit}>
-          Editar
-        </button>
-        <button type="button" className="link-button" disabled={toggle.isPending} onClick={() => toggle.mutate()}>
-          {garment.active ? 'Desactivar' : 'Reactivar'}
-        </button>
+      <td>
+        <span className="actions">
+          <button type="button" className="link-button" onClick={onEdit}>
+            Editar
+          </button>
+          <button type="button" className="link-button" disabled={toggle.isPending} onClick={() => toggle.mutate()}>
+            {garment.active ? 'Desactivar' : 'Reactivar'}
+          </button>
+        </span>
       </td>
     </tr>
   )

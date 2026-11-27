@@ -1319,7 +1319,7 @@ select:hover {
 }
 
 .table .actions {
-  display: flex;
+  display: inline-flex;
   gap: 1rem;
 }
 
