@@ -1,9 +1,12 @@
 # EasyLook: Manual Técnico
 
-Proyecto de la asignatura Computación Orientada a Servicios.
-Integrantes: Mariana Sinisterra Orobio y Ana Sofía Suarez.
-Versión del documento 1.0, noviembre de 2026, correspondiente a la versión 1.0.0 de la API (`/api/v1`).
-Repositorio: https://github.com/Mariana-Codebase/EasyLook
+| | |
+| --- | --- |
+| Asignatura | Computación Orientada a Servicios |
+| Integrantes | Mariana Sinisterra Orobio, Ana Sofía Suarez |
+| Versión del documento | 1.0, noviembre de 2026 |
+| Versión de la API | 1.0.0 (`/api/v1`) |
+| Repositorio | https://github.com/Mariana-Codebase/EasyLook |
 
 ## Contenido
 
