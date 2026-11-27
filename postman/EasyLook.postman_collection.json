@@ -1,0 +1,2530 @@
+{
+  "info": {
+    "_postman_id": "9af80e04-efcd-5b45-beb6-e123e01116e1",
+    "name": "EasyLook API v1",
+    "description": "Pruebas funcionales de la API REST de EasyLook. Ejecuta la colección completa en orden: cada carpeta deja en variables el token y los ids que usa la siguiente. Incluye escenarios exitosos y de error con el formato uniforme { error: { code, message, details } }.\n\nRequisitos: la API corriendo con los datos semilla (npm run db:reset) y el entorno 'EasyLook local' seleccionado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Servicio",
+      "item": [
+        {
+          "name": "Salud del servicio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{host}}/health",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Responde ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contrato OpenAPI publicado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{host}}/openapi.json",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es OpenAPI 3.1 con servidor /api/v1', () => {",
+                  "  const d = pm.response.json();",
+                  "  pm.expect(d.openapi).to.eql('3.1.0');",
+                  "  pm.expect(d.servers[0].url).to.eql('/api/v1');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ruta inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/no-existe",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error NOT_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NOT_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuerpo JSON malformado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": ",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error INVALID_JSON con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('INVALID_JSON');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Autenticación y JWT",
+      "item": [
+        {
+          "name": "Registrar usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Persona Postman\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('userEmail', `postman.${Date.now()}@easylook.dev`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve un JWT y el usuario con rol user', () => {",
+                  "  pm.expect(body.token).to.be.a('string');",
+                  "  pm.expect(body.tokenType).to.eql('Bearer');",
+                  "  pm.expect(body.user.role).to.eql('user');",
+                  "});",
+                  "pm.test('Nunca expone la contraseña', () => pm.expect(JSON.stringify(body)).to.not.match(/password/i));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar correo duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Otra persona\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"OtraClave2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error EMAIL_ALREADY_REGISTERED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('EMAIL_ALREADY_REGISTERED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar con datos inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A\",\n  \"email\": \"no-es-correo\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Indica cada campo inválido', () => {",
+                  "  const paths = pm.response.json().error.details.issues.map(i => i.path);",
+                  "  pm.expect(paths).to.include.members(['name', 'email', 'password']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);",
+                  "pm.test('Guarda el token para las siguientes peticiones', () => pm.expect(pm.collectionVariables.get('token')).to.not.be.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión con contraseña incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error INVALID_CREDENTIALS con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('INVALID_CREDENTIALS');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión como administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().token);",
+                  "pm.test('El rol es admin', () => pm.expect(pm.response.json().user.role).to.eql('admin'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario actual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el usuario registrado', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('userEmail')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario sin token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error UNAUTHORIZED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('UNAUTHORIZED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario con token alterado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tamperedToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('tamperedToken', pm.collectionVariables.get('token').slice(0, -4) + 'abcd');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error UNAUTHORIZED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('UNAUTHORIZED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guardar preferencias de estilo y talla",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferredStyles\": [\n    \"boho\",\n    \"minimal\"\n  ],\n  \"preferredSizes\": [\n    \"M\",\n    \"37\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Normaliza y guarda las preferencias', () => pm.expect(pm.response.json().preferredStyles).to.eql(['boho', 'minimal']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Tiendas y ocasiones",
+      "item": [
+        {
+          "name": "Listar tiendas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/stores?page=1&limit=5",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Pagina con metadatos', () => {",
+                  "  pm.expect(body.data.length).to.be.at.most(5);",
+                  "  pm.expect(body.meta).to.include.keys('page', 'limit', 'total', 'totalPages');",
+                  "});",
+                  "pm.collectionVariables.set('storeId', body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar tiendas por estilo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/stores?style=boho",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todas son boho', () => pm.response.json().data.forEach(s => pm.expect(s.style).to.eql('boho')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar una tienda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/stores/{{storeId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el conteo de prendas', () => pm.expect(pm.response.json().garmentCount).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar ocasiones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/occasions",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye las cinco ocasiones iniciales', () => pm.expect(pm.response.json().data.map(o => o.code)).to.include.members(['date', 'office', 'brunch', 'party', 'casual']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedir más de 100 resultados por página",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/stores?limit=500",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear tienda sin ser administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/stores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tienda no autorizada\",\n  \"style\": \"casual\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error FORBIDDEN con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('FORBIDDEN');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear tienda como administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/stores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{newStoreName}}\",\n  \"description\": \"Creada desde Postman\",\n  \"style\": \"minimal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('newStoreName', `Tienda Postman ${Date.now()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('newStoreId', pm.response.json().id);",
+                  "pm.test('Queda activa', () => pm.expect(pm.response.json().active).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear tienda con nombre repetido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/stores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{newStoreName}}\",\n  \"style\": \"minimal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error CONFLICT con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('CONFLICT');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar tienda",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/stores/{{newStoreId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda inactiva', () => pm.expect(pm.response.json().active).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar tienda desactivada como visitante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/stores/{{newStoreId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error NOT_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NOT_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Prendas (CRUD de administrador)",
+      "item": [
+        {
+          "name": "Filtrar prendas por categoría, ocasión y precio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments?category=shoes&occasion=date&maxPriceCop=180000&sort=price_asc",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data;",
+                  "pm.test('Cumple todos los filtros', () => items.forEach(g => {",
+                  "  pm.expect(g.category).to.eql('shoes');",
+                  "  pm.expect(g.occasions).to.include('date');",
+                  "  pm.expect(g.priceCop).to.be.at.most(180000);",
+                  "}));",
+                  "pm.test('Viene ordenado por precio ascendente', () => {",
+                  "  const prices = items.map(g => g.priceCop);",
+                  "  pm.expect(prices).to.eql([...prices].sort((a, b) => a - b));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar prendas por texto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments?q=blazer",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Encuentra los blazers', () => pm.response.json().data.forEach(g => pm.expect(g.name.toLowerCase()).to.include('blazer')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Traer prendas para el outfit de brunch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments?occasion=brunch&limit=100",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const byName = Object.fromEntries(pm.response.json().data.map(g => [g.name, g.id]));",
+                  "pm.collectionVariables.set('topId', byName['Blusa campesina']);",
+                  "pm.collectionVariables.set('bottomId', byName['Falda boho estampada']);",
+                  "pm.collectionVariables.set('shoesId', byName['Sandalias de tiras']);",
+                  "pm.test('Encuentra top, bottom y zapatos del catálogo semilla', () => {",
+                  "  ['topId', 'bottomId', 'shoesId'].forEach(k => pm.expect(pm.collectionVariables.get(k)).to.be.a('string'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar una prenda",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments/28a58b2a-c847-44d4-a2ca-ec1dc35b1001",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el Blazer crema del README', () => {",
+                  "  const g = pm.response.json();",
+                  "  pm.expect(g.name).to.eql('Blazer crema');",
+                  "  pm.expect(g.priceCop).to.eql(149900);",
+                  "  pm.expect(g.store.name).to.eql('Atelier Norte');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar prenda con id inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments/no-es-un-uuid",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar prenda inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments/00000000-0000-4000-8000-000000000000",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error NOT_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NOT_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear prenda sin token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/garments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"name\": \"Sin permiso\",\n  \"category\": \"top\",\n  \"priceCop\": 50000,\n  \"style\": \"casual\",\n  \"color\": \"azul\",\n  \"occasionCodes\": [\"casual\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error UNAUTHORIZED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('UNAUTHORIZED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear prenda como administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/garments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"name\": \"Camisa oxford Postman\",\n  \"category\": \"top\",\n  \"priceCop\": 99900,\n  \"style\": \"classic\",\n  \"color\": \"azul\",\n  \"sizes\": [\"S\", \"M\", \"L\"],\n  \"occasionCodes\": [\"office\", \"casual\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('newGarmentId', pm.response.json().id);",
+                  "pm.test('Queda asociada a las ocasiones', () => pm.expect(pm.response.json().occasions).to.have.members(['office', 'casual']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear prenda con precio decimal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/garments",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storeId\": \"{{storeId}}\",\n  \"name\": \"Precio inválido\",\n  \"category\": \"top\",\n  \"priceCop\": 99900.5,\n  \"style\": \"classic\",\n  \"color\": \"azul\",\n  \"occasionCodes\": [\"office\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar prenda",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/garments/{{newGarmentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"priceCop\": 89900\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Actualiza el precio', () => pm.expect(pm.response.json().priceCop).to.eql(89900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar prenda",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/garments/{{newGarmentId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar prenda desactivada como visitante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/garments/{{newGarmentId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error NOT_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NOT_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Outfits y look book (CRUD)",
+      "item": [
+        {
+          "name": "Crear outfit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Brunch de domingo\",\n  \"occasionCode\": \"brunch\",\n  \"budgetCop\": 350000,\n  \"currency\": \"COP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "const o = pm.response.json();",
+                  "pm.collectionVariables.set('outfitId', o.id);",
+                  "pm.test('Empieza vacío y con el presupuesto completo', () => {",
+                  "  pm.expect(o.status).to.eql('draft');",
+                  "  pm.expect(o.totalCop).to.eql(0);",
+                  "  pm.expect(o.remainingCop).to.eql(350000);",
+                  "  pm.expect(o.budgetStatus).to.eql('within_budget');",
+                  "  pm.expect(o.items).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear outfit con ocasión inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Boda\",\n  \"occasionCode\": \"boda\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear outfit sin token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Anónimo\",\n  \"occasionCode\": \"brunch\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error UNAUTHORIZED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('UNAUTHORIZED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar mis outfits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/outfits",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el outfit creado', () => pm.expect(pm.response.json().data.map(o => o.id)).to.include(pm.collectionVariables.get('outfitId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar prenda al outfit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"garmentId\": \"28a58b2a-c847-44d4-a2ca-ec1dc35b1001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Recalcula total y saldo como en el README', () => {",
+                  "  pm.expect(r.totalCop).to.eql(149900);",
+                  "  pm.expect(r.remainingCop).to.eql(200100);",
+                  "  pm.expect(r.budgetStatus).to.eql('within_budget');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar la misma prenda otra vez",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"garmentId\": \"28a58b2a-c847-44d4-a2ca-ec1dc35b1001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error GARMENT_ALREADY_ADDED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('GARMENT_ALREADY_ADDED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar una prenda desactivada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"garmentId\": \"{{newGarmentId}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error GARMENT_INACTIVE con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('GARMENT_INACTIVE');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guardar outfit incompleto",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/finalize",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error OUTFIT_INCOMPLETE con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('OUTFIT_INCOMPLETE');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Dice qué falta', () => pm.expect(pm.response.json().error.details.missingCategories).to.include.members(['top', 'bottom', 'shoes']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar top",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"garmentId\": \"{{topId}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar bottom",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"garmentId\": \"{{bottomId}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agregar zapatos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"garmentId\": \"{{shoesId}}\" }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Mezcla tiendas y queda completo', () => {",
+                  "  pm.expect(r.isComplete).to.be.true;",
+                  "  pm.expect(r.storeCount).to.be.above(1);",
+                  "  pm.expect(r.totalCop).to.eql(149900 + 79900 + 99900 + 89900);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bajar el presupuesto",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"budgetCop\": 300000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda sobre el presupuesto', () => pm.expect(pm.response.json().budgetStatus).to.eql('over_budget'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guardar outfit sobre el presupuesto",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/finalize",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error BUDGET_EXCEEDED con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('BUDGET_EXCEEDED');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Informa presupuesto y total', () => pm.expect(pm.response.json().error.details).to.eql({ budgetCop: 300000, totalCop: 419600 }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guardar outfit aceptando el exceso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/finalize",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"allowOverBudget\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda guardado', () => { pm.expect(pm.response.json().status).to.eql('saved'); pm.expect(pm.response.json().savedAt).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar look book",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/outfits?status=saved",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Solo trae outfits guardados e incluye el nuestro', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  data.forEach(o => pm.expect(o.status).to.eql('saved'));",
+                  "  pm.expect(data.map(o => o.id)).to.include(pm.collectionVariables.get('outfitId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar outfit",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae el detalle con 4 prendas', () => pm.expect(pm.response.json().itemCount).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retirar prenda del outfit",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items/28a58b2a-c847-44d4-a2ca-ec1dc35b1001",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Recalcula el total', () => pm.expect(pm.response.json().totalCop).to.eql(79900 + 99900 + 89900));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retirar una prenda que no está",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}/items/28a58b2a-c847-44d4-a2ca-ec1dc35b1001",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error GARMENT_NOT_IN_OUTFIT con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('GARMENT_NOT_IN_OUTFIT');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar outfit de otra persona",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error FORBIDDEN_RESOURCE con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('FORBIDDEN_RESOURCE');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar outfit",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar outfit eliminado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/outfits/{{outfitId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error NOT_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NOT_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Look Match",
+      "item": [
+        {
+          "name": "Pedir propuestas (ejemplo del README)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/recommendations/look-match",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionCode\": \"date\",\n  \"budgetCop\": 400000,\n  \"preferredStyles\": [\n    \"elegant\",\n    \"minimal\"\n  ],\n  \"excludedCategories\": [\n    \"outerwear\"\n  ],\n  \"allowOverBudget\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve entre una y tres propuestas con etiquetas distintas', () => {",
+                  "  pm.expect(body.recommendations.length).to.be.within(1, 3);",
+                  "  const labels = body.recommendations.map(r => r.label);",
+                  "  pm.expect(new Set(labels).size).to.eql(labels.length);",
+                  "});",
+                  "pm.test('Todas caben en el presupuesto y sin chaquetas', () => body.recommendations.forEach(r => {",
+                  "  pm.expect(r.totalCop).to.be.at.most(400000);",
+                  "  pm.expect(r.remainingCop).to.eql(400000 - r.totalCop);",
+                  "  r.items.forEach(i => pm.expect(i.category).to.not.eql('outerwear'));",
+                  "}));",
+                  "pm.test('Cada propuesta explica su puntaje', () => body.recommendations.forEach(r => {",
+                  "  pm.expect(r.score).to.be.within(0, 100);",
+                  "  pm.expect(r.explanation.length).to.be.above(2);",
+                  "}));",
+                  "pm.collectionVariables.set('recGarmentIds', JSON.stringify(body.recommendations[0].garmentIds));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedir propuestas con presupuesto insuficiente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/recommendations/look-match",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionCode\": \"office\",\n  \"budgetCop\": 100000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error NO_MATCH_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NO_MATCH_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Informa el costo del look más económico', () => {",
+                  "  const d = pm.response.json().error.details;",
+                  "  pm.expect(d.reason).to.eql('BUDGET_TOO_LOW');",
+                  "  pm.expect(d.cheapestTotalCop).to.be.above(100000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedir la opción más cercana fuera del presupuesto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/recommendations/look-match",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionCode\": \"office\",\n  \"budgetCop\": 100000,\n  \"allowOverBudget\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve una sola opción marcada como sobre el presupuesto', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.withinBudgetFound).to.be.false;",
+                  "  pm.expect(b.recommendations).to.have.lengthOf(1);",
+                  "  pm.expect(b.recommendations[0].budgetStatus).to.eql('over_budget');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedir propuestas excluyendo los zapatos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/recommendations/look-match",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"occasionCode\": \"party\",\n  \"excludedCategories\": [\n    \"shoes\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Error NO_MATCH_FOUND con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('NO_MATCH_FOUND');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Dice qué categoría falta', () => pm.expect(pm.response.json().error.details.missingCategories).to.eql(['shoes']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear outfit para la propuesta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cita del viernes\",\n  \"occasionCode\": \"date\",\n  \"budgetCop\": 400000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('lookOutfitId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aplicar la propuesta al outfit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{lookOutfitId}}/apply-recommendation",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"garmentIds\": {{recGarmentIds}},\n  \"mode\": \"replace\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('El outfit queda completo con las prendas de la propuesta', () => {",
+                  "  const o = pm.response.json();",
+                  "  pm.expect(o.isComplete).to.be.true;",
+                  "  pm.expect(o.items.map(i => i.id)).to.have.members(JSON.parse(pm.collectionVariables.get('recGarmentIds')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aplicar una propuesta con prendas repetidas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/outfits/{{lookOutfitId}}/apply-recommendation",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"garmentIds\": [\n    \"28a58b2a-c847-44d4-a2ca-ec1dc35b1001\",\n    \"28a58b2a-c847-44d4-a2ca-ec1dc35b1001\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error VALIDATION_ERROR con el formato uniforme', () => {",
+                  "  const e = pm.response.json().error;",
+                  "  pm.expect(e.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(e.message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Responde en menos de 2 segundos', () => pm.expect(pm.response.responseTime).to.be.below(2000));",
+          "if (pm.response.code >= 400) {",
+          "  pm.test('Los errores usan JSON', () => pm.response.to.be.json);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "tamperedToken",
+      "value": ""
+    },
+    {
+      "key": "userEmail",
+      "value": ""
+    },
+    {
+      "key": "storeId",
+      "value": ""
+    },
+    {
+      "key": "newStoreId",
+      "value": ""
+    },
+    {
+      "key": "newStoreName",
+      "value": ""
+    },
+    {
+      "key": "newGarmentId",
+      "value": ""
+    },
+    {
+      "key": "topId",
+      "value": ""
+    },
+    {
+      "key": "bottomId",
+      "value": ""
+    },
+    {
+      "key": "shoesId",
+      "value": ""
+    },
+    {
+      "key": "outfitId",
+      "value": ""
+    },
+    {
+      "key": "lookOutfitId",
+      "value": ""
+    },
+    {
+      "key": "recGarmentIds",
+      "value": ""
+    }
+  ]
+}
