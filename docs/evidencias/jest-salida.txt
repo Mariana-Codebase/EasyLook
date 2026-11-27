@@ -1,0 +1,104 @@
+EasyLook API: resultado de npm test
+
+PASS tests/integration/auth.test.ts
+  ✓ auth › registers a user and never returns the password hash (8 ms)
+  ✓ auth › rejects a duplicate email with 409 (7 ms)
+  ✓ auth › cannot self-register as admin (7 ms)
+  ✓ auth › validates input with a uniform error body (2 ms)
+  ✓ auth › logs in and returns the current user (6 ms)
+  ✓ auth › rejects wrong credentials without saying which part failed (6 ms)
+  ✓ auth › requires a valid token for /auth/me (4 ms)
+  ✓ auth › updates style and size preferences (7 ms)
+
+PASS tests/integration/catalog.test.ts
+  ✓ stores and occasions › lists stores publicly with pagination metadata (8 ms)
+  ✓ stores and occasions › counts the active garments of each store (8 ms)
+  ✓ stores and occasions › filters stores by style (3 ms)
+  ✓ stores and occasions › caps the page limit at 100 (2 ms)
+  ✓ stores and occasions › lists the five initial occasions (2 ms)
+  ✓ stores and occasions › only lets admins create and edit stores (18 ms)
+  ✓ stores and occasions › lets admins add an occasion (6 ms)
+  ✓ garments › filters by category, occasion and price, sorted by price (12 ms)
+  ✓ garments › filters by store, color, size and text search (19 ms)
+  ✓ garments › rejects an inverted price range (2 ms)
+  ✓ garments › returns the README example garment by id (3 ms)
+  ✓ garments › hides discontinued garments from visitors (7 ms)
+  ✓ garments › lets admins create, edit and deactivate garments (26 ms)
+  ✓ garments › rejects garments for an inactive store (5 ms)
+
+PASS tests/integration/http.test.ts
+  ✓ HTTP conventions › serves a health check (4 ms)
+  ✓ HTTP conventions › returns JSON errors for unknown routes (2 ms)
+  ✓ HTTP conventions › returns INVALID_JSON for a malformed body (3 ms)
+  ✓ HTTP conventions › publishes an OpenAPI 3.1 document covering every endpoint in the spec (2 ms)
+  ✓ HTTP conventions › serves Swagger UI (2 ms)
+  ✓ HTTP conventions › sets security headers and hides the framework (8 ms)
+
+PASS tests/integration/look-match.test.ts
+  ✓ Look Match › answers the README example for visitors (11 ms)
+  ✓ Look Match › is reproducible (9 ms)
+  ✓ Look Match › returns 422 NO_MATCH_FOUND with the cheapest total when the budget is too low (3 ms)
+  ✓ Look Match › shows the closest look only when allowOverBudget=true (6 ms)
+  ✓ Look Match › returns 422 when the exclusions make a complete look impossible (3 ms)
+  ✓ Look Match › rejects unknown occasions (2 ms)
+  ✓ Look Match › uses the profile preferences of a signed-in user (17 ms)
+  ✓ Look Match › filters by size and lets the request override the profile (10 ms)
+  ✓ Look Match › copies a proposal into an outfit with apply-recommendation (32 ms)
+
+PASS tests/integration/outfits.test.ts
+  ✓ outfits › creates an empty outfit with the README shape (10 ms)
+  ✓ outfits › requires authentication (5 ms)
+  ✓ outfits › rejects unknown occasions and decimal budgets (5 ms)
+  ✓ outfits › adds a garment and recalculates total and remaining budget (19 ms)
+  ✓ outfits › rejects the same garment twice with 409 GARMENT_ALREADY_ADDED (21 ms)
+  ✓ outfits › keeps duplicates out even under concurrent requests (37 ms)
+  ✓ outfits › mixes stores and flags over budget (49 ms)
+  ✓ outfits › enforces ownership with 403 FORBIDDEN_RESOURCE (25 ms)
+  ✓ outfits › blocks admins from other people outfits too (11 ms)
+  ✓ outfits › refuses to finalize an incomplete outfit (16 ms)
+  ✓ outfits › refuses to finalize over budget unless allowed (40 ms)
+  ✓ outfits › saves into the look book and returns to draft when edited (55 ms)
+  ✓ outfits › removes the budget with null and reports not_set (9 ms)
+  ✓ outfits › deletes an outfit (9 ms)
+  ✓ outfits › rejects discontinued garments (17 ms)
+  ✓ outfits › validates ids in the path (3 ms)
+
+PASS tests/unit/look-match.engine.test.ts
+  ✓ scoreLook › gives 100 to a look that fits occasion, style, budget and store variety (1 ms)
+  ✓ scoreLook › applies the 40/30/20/10 weights (0 ms)
+  ✓ scoreLook › measures style affinity against the preferred styles when given (0 ms)
+  ✓ scoreLook › gives a neutral budget score when there is no budget (0 ms)
+  ✓ runLookMatch › returns up to three distinct labelled looks, all complete and within budget (0 ms)
+  ✓ runLookMatch › ranks the best fitting look as balanced (1 ms)
+  ✓ runLookMatch › makes the budget option cheaper than the balanced one (0 ms)
+  ✓ runLookMatch › only adds a complement to the statement look when it still fits the budget (0 ms)
+  ✓ runLookMatch › never uses excluded categories (1 ms)
+  ✓ runLookMatch › reports missing categories when no complete look can be formed (3 ms)
+  ✓ runLookMatch › reports the cheapest total when the budget is too low (1 ms)
+  ✓ runLookMatch › returns only the closest look when allowOverBudget is requested (0 ms)
+  ✓ runLookMatch › lets preferred styles change the ranking without overriding the occasion (0 ms)
+  ✓ runLookMatch › is deterministic regardless of the candidate order (1 ms)
+  ✓ runLookMatch › keeps the cheapest pieces in the shortlist so the budget option is real (0 ms)
+  ✓ filterBySizes › keeps everything without requested sizes (0 ms)
+  ✓ filterBySizes › filters each category only by the sizes that exist in it (0 ms)
+  ✓ filterBySizes › combines clothing and shoe sizes (0 ms)
+
+PASS tests/unit/outfit.rules.test.ts
+  ✓ computeBudget (rules 4 and 5) › reports not_set and no remaining amount when there is no budget (0 ms)
+  ✓ computeBudget (rules 4 and 5) › is within budget when the total is lower or equal (0 ms)
+  ✓ computeBudget (rules 4 and 5) › is over budget with a negative remaining amount (1 ms)
+  ✓ computeBudget (rules 4 and 5) › handles an empty outfit (0 ms)
+  ✓ evaluateCompleteness (rule 3) › accepts top + bottom + shoes (0 ms)
+  ✓ evaluateCompleteness (rule 3) › accepts dress + shoes, with extras (0 ms)
+  ✓ evaluateCompleteness (rule 3) › lists what is missing for an empty outfit (0 ms)
+  ✓ evaluateCompleteness (rule 3) › asks only for the missing half of the separates (0 ms)
+  ✓ evaluateCompleteness (rule 3) › asks for shoes when a dress is present (0 ms)
+  ✓ evaluateCompleteness (rule 3) › does not count outerwear or accessories as a base (1 ms)
+  ✓ countStores › counts distinct stores (0 ms)
+
+PASS tests/unit/uuid.test.ts
+  ✓ uuidV5 › matches the RFC test vector for python.org in the DNS namespace (1 ms)
+  ✓ uuidV5 › is stable for seed identifiers (0 ms)
+
+Test Suites: 8 passed, 8 total
+Tests:       84 passed, 84 total

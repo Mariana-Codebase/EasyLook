@@ -6,20 +6,28 @@
 
 ## Puesta en marcha
 
-La API está implementada en este repositorio. Para correrla en local hacen falta Node.js 20 o superior y PostgreSQL 16:
+La API y su interfaz web están implementadas en este repositorio. Para correrlas en local hacen falta Node.js 20 o superior y PostgreSQL 16:
 
 ```bash
 npm install
 cp .env.example .env      # cambia JWT_SECRET
 docker compose up -d db   # o usa un PostgreSQL propio y ajusta DATABASE_URL
 npm run db:reset          # migraciones y catálogo ficticio
-npm run dev
+npm run dev               # API en http://localhost:3000, documentación en /docs
+
+cd web && npm install && npm run dev   # interfaz en http://localhost:5173
 ```
 
-La documentación interactiva queda en `http://localhost:3000/docs`. El manual de instalación, el recorrido de demostración con las cuentas de prueba, la explicación de Look Match y las decisiones de implementación están en [docs/MANUAL.md](docs/MANUAL.md). La especificación OpenAPI exportada está en [docs/openapi.json](docs/openapi.json).
+| Documento | Contenido |
+| --- | --- |
+| [docs/MANUAL_TECNICO.md](docs/MANUAL_TECNICO.md) | Manual técnico: arquitectura, principios SOA, modelo y diccionario de datos, contratos y versionamiento, seguridad JWT, implementación, evidencias de pruebas y conclusiones |
+| [docs/MANUAL.md](docs/MANUAL.md) | Instalación, cuentas de prueba y recorrido de demostración |
+| [postman/](postman/) | Colección de Postman con 64 peticiones y sus pruebas, más el entorno local |
+| [docs/openapi.json](docs/openapi.json) | Contrato OpenAPI 3.1 exportado |
 
 ```bash
-npm test                  # pruebas unitarias y de integración
+npm test                  # 84 pruebas unitarias y de integración
+npm run test:postman      # colección de Postman con Newman
 ```
 
 ## 1. Resumen

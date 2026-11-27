@@ -31,6 +31,16 @@ npm run db:reset   # migraciones + datos semilla
 npm run dev        # http://localhost:3000
 ```
 
+Para la interfaz web, en otra terminal:
+
+```bash
+cd web
+npm install
+npm run dev      # http://localhost:5173
+```
+
+En desarrollo, Vite redirige `/api`, `/docs` y `/openapi.json` a la API en el puerto 3000, así que no hace falta configurar nada más. Para compilar la interfaz contra una API publicada en otra dirección se define `VITE_API_URL` en `web/.env`.
+
 La documentación interactiva queda en `http://localhost:3000/docs` y la especificación OpenAPI en `http://localhost:3000/openapi.json`. Una copia estática está en `docs/openapi.json`; Postman la importa directamente desde *Import > File* y genera la colección con todos los endpoints.
 
 `npm run db:seed` borra y vuelve a cargar todas las tablas, así que solo debe usarse en desarrollo. El script se niega a correr con `NODE_ENV=production`.
@@ -48,7 +58,7 @@ También crea dos cuentas, configurables en `.env`:
 
 ## Recorrido de demostración
 
-Los ejemplos usan `curl` y `jq`. Desde Swagger el flujo es el mismo: el botón *Authorize* recibe el token sin el prefijo `Bearer`.
+El mismo recorrido se puede hacer desde la interfaz web, desde Postman (carpeta `postman/`) o desde Swagger, donde el botón *Authorize* recibe el token sin el prefijo `Bearer`. Los ejemplos de abajo usan `curl` y `jq`.
 
 ```bash
 B=http://localhost:3000/api/v1
@@ -114,6 +124,8 @@ docker compose run --rm -e NODE_ENV=development api node dist/db/seed.js
 ## Estructura del código
 
 ```
+web/                       interfaz React + Vite que consume la API
+postman/                   colección y entorno de Postman
 src/
   config/env.ts            variables de entorno validadas con Zod
   db/                      esquema Drizzle, cliente, migración y datos semilla

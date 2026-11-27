@@ -1,0 +1,445 @@
+newman
+
+EasyLook API v1
+
+❏ 0. Servicio
+↳ Salud del servicio
+  GET http://localhost:3000/health [200 OK, 258B, 16ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Responde ok
+
+↳ Contrato OpenAPI publicado
+  GET http://localhost:3000/openapi.json [200 OK, 47.07kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Es OpenAPI 3.1 con servidor /api/v1
+
+↳ Ruta inexistente
+  GET http://localhost:3000/api/v1/no-existe [404 Not Found, 997B, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error NOT_FOUND con el formato uniforme
+
+↳ Cuerpo JSON malformado
+  POST http://localhost:3000/api/v1/auth/login [400 Bad Request, 344B, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error INVALID_JSON con el formato uniforme
+
+❏ 1. Autenticación y JWT
+↳ Registrar usuario
+  POST http://localhost:3000/api/v1/auth/register [201 Created, 1.5kB, 274ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 201
+  ✓  Devuelve un JWT y el usuario con rol user
+  ✓  Nunca expone la contraseña
+
+↳ Registrar correo duplicado
+  POST http://localhost:3000/api/v1/auth/register [409 Conflict, 1.12kB, 268ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 409
+  ✓  Error EMAIL_ALREADY_REGISTERED con el formato uniforme
+
+↳ Registrar con datos inválidos
+  POST http://localhost:3000/api/v1/auth/register [400 Bad Request, 1.34kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+  ✓  Indica cada campo inválido
+
+↳ Iniciar sesión
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.49kB, 257ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Guarda el token para las siguientes peticiones
+
+↳ Iniciar sesión con contraseña incorrecta
+  POST http://localhost:3000/api/v1/auth/login [401 Unauthorized, 1.11kB, 256ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 401
+  ✓  Error INVALID_CREDENTIALS con el formato uniforme
+
+↳ Iniciar sesión como administrador
+  POST http://localhost:3000/api/v1/auth/login [200 OK, 1.49kB, 255ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  El rol es admin
+
+↳ Consultar usuario actual
+  GET http://localhost:3000/api/v1/auth/me [200 OK, 1.12kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Es el usuario registrado
+
+↳ Consultar usuario sin token
+  GET http://localhost:3000/api/v1/auth/me [401 Unauthorized, 1.01kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 401
+  ✓  Error UNAUTHORIZED con el formato uniforme
+
+↳ Consultar usuario con token alterado
+  GET http://localhost:3000/api/v1/auth/me [401 Unauthorized, 1.01kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 401
+  ✓  Error UNAUTHORIZED con el formato uniforme
+
+↳ Guardar preferencias de estilo y talla
+  PATCH http://localhost:3000/api/v1/auth/me [200 OK, 1.14kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Normaliza y guarda las preferencias
+
+❏ 2. Tiendas y ocasiones
+↳ Listar tiendas
+  GET http://localhost:3000/api/v1/stores?page=1&limit=5 [200 OK, 2.23kB, 7ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Pagina con metadatos
+
+↳ Filtrar tiendas por estilo
+  GET http://localhost:3000/api/v1/stores?style=boho [200 OK, 1.23kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Todas son boho
+
+↳ Consultar una tienda
+  GET http://localhost:3000/api/v1/stores/4139f63f-3e62-592a-956d-2c7e192c51ff [200 OK, 1.15kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Incluye el conteo de prendas
+
+↳ Listar ocasiones
+  GET http://localhost:3000/api/v1/occasions [200 OK, 1.94kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Incluye las cinco ocasiones iniciales
+
+↳ Pedir más de 100 resultados por página
+  GET http://localhost:3000/api/v1/stores?limit=500 [400 Bad Request, 1.09kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+
+↳ Crear tienda sin ser administrador
+  POST http://localhost:3000/api/v1/stores [403 Forbidden, 997B, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 403
+  ✓  Error FORBIDDEN con el formato uniforme
+
+↳ Crear tienda como administrador
+  POST http://localhost:3000/api/v1/stores [201 Created, 1.16kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 201
+  ✓  Queda activa
+
+↳ Crear tienda con nombre repetido
+  POST http://localhost:3000/api/v1/stores [409 Conflict, 1.02kB, 5ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 409
+  ✓  Error CONFLICT con el formato uniforme
+
+↳ Desactivar tienda
+  PATCH http://localhost:3000/api/v1/stores/955cbc98-4667-4f09-8b71-f654b87e6d1b [200 OK, 1.16kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Queda inactiva
+
+↳ Consultar tienda desactivada como visitante
+  GET http://localhost:3000/api/v1/stores/955cbc98-4667-4f09-8b71-f654b87e6d1b [404 Not Found, 978B, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error NOT_FOUND con el formato uniforme
+
+❏ 3. Prendas (CRUD de administrador)
+↳ Filtrar prendas por categoría, ocasión y precio
+  GET http://localhost:3000/api/v1/garments?category=shoes&occasion=date&maxPriceCop=180000&sort=price_asc [200 OK, 2.78kB, 10ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Cumple todos los filtros
+  ✓  Viene ordenado por precio ascendente
+
+↳ Buscar prendas por texto
+  GET http://localhost:3000/api/v1/garments?q=blazer [200 OK, 1.85kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Encuentra los blazers
+
+↳ Traer prendas para el outfit de brunch
+  GET http://localhost:3000/api/v1/garments?occasion=brunch&limit=100 [200 OK, 11.11kB, 9ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Encuentra top, bottom y zapatos del catálogo semilla
+
+↳ Consultar una prenda
+  GET http://localhost:3000/api/v1/garments/28a58b2a-c847-44d4-a2ca-ec1dc35b1001 [200 OK, 1.36kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Es el Blazer crema del README
+
+↳ Consultar prenda con id inválido
+  GET http://localhost:3000/api/v1/garments/no-es-un-uuid [400 Bad Request, 1.09kB, 1ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+
+↳ Consultar prenda inexistente
+  GET http://localhost:3000/api/v1/garments/00000000-0000-4000-8000-000000000000 [404 Not Found, 978B, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error NOT_FOUND con el formato uniforme
+
+↳ Crear prenda sin token
+  POST http://localhost:3000/api/v1/garments [401 Unauthorized, 1.01kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 401
+  ✓  Error UNAUTHORIZED con el formato uniforme
+
+↳ Crear prenda como administrador
+  POST http://localhost:3000/api/v1/garments [201 Created, 1.35kB, 9ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 201
+  ✓  Queda asociada a las ocasiones
+
+↳ Crear prenda con precio decimal
+  POST http://localhost:3000/api/v1/garments [400 Bad Request, 1.11kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+
+↳ Editar prenda
+  PATCH http://localhost:3000/api/v1/garments/8e625eee-a2be-494c-983f-d577add82339 [200 OK, 1.35kB, 6ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Actualiza el precio
+
+↳ Desactivar prenda
+  DELETE http://localhost:3000/api/v1/garments/8e625eee-a2be-494c-983f-d577add82339 [204 No Content, 806B, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 204
+
+↳ Consultar prenda desactivada como visitante
+  GET http://localhost:3000/api/v1/garments/8e625eee-a2be-494c-983f-d577add82339 [404 Not Found, 978B, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error NOT_FOUND con el formato uniforme
+
+❏ 4. Outfits y look book (CRUD)
+↳ Crear outfit
+  POST http://localhost:3000/api/v1/outfits [201 Created, 1.35kB, 5ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 201
+  ✓  Empieza vacío y con el presupuesto completo
+
+↳ Crear outfit con ocasión inexistente
+  POST http://localhost:3000/api/v1/outfits [400 Bad Request, 1.03kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+
+↳ Crear outfit sin token
+  POST http://localhost:3000/api/v1/outfits [401 Unauthorized, 1.01kB, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 401
+  ✓  Error UNAUTHORIZED con el formato uniforme
+
+↳ Listar mis outfits
+  GET http://localhost:3000/api/v1/outfits [200 OK, 1.32kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Incluye el outfit creado
+
+↳ Agregar prenda al outfit
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [200 OK, 1.36kB, 8ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Recalcula total y saldo como en el README
+
+↳ Agregar la misma prenda otra vez
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [409 Conflict, 1.07kB, 9ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 409
+  ✓  Error GARMENT_ALREADY_ADDED con el formato uniforme
+
+↳ Agregar una prenda desactivada
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [400 Bad Request, 1.09kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error GARMENT_INACTIVE con el formato uniforme
+
+↳ Guardar outfit incompleto
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/finalize [400 Bad Request, 1.09kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error OUTFIT_INCOMPLETE con el formato uniforme
+  ✓  Dice qué falta
+
+↳ Agregar top
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [200 OK, 1.58kB, 8ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+
+↳ Agregar bottom
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [200 OK, 1.81kB, 11ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+
+↳ Agregar zapatos
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items [200 OK, 2.03kB, 8ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Mezcla tiendas y queda completo
+
+↳ Bajar el presupuesto
+  PATCH http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1 [200 OK, 2.26kB, 9ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Queda sobre el presupuesto
+
+↳ Guardar outfit sobre el presupuesto
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/finalize [400 Bad Request, 1.06kB, 5ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error BUDGET_EXCEEDED con el formato uniforme
+  ✓  Informa presupuesto y total
+
+↳ Guardar outfit aceptando el exceso
+  POST http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/finalize [200 OK, 2.28kB, 7ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Queda guardado
+
+↳ Consultar look book
+  GET http://localhost:3000/api/v1/outfits?status=saved [200 OK, 1.34kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Solo trae outfits guardados e incluye el nuestro
+
+↳ Consultar outfit
+  GET http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1 [200 OK, 2.28kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Trae el detalle con 4 prendas
+
+↳ Retirar prenda del outfit
+  DELETE http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items/28a58b2a-c847-44d4-a2ca-ec1dc35b1001 [200 OK, 1.79kB, 6ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Recalcula el total
+
+↳ Retirar una prenda que no está
+  DELETE http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1/items/28a58b2a-c847-44d4-a2ca-ec1dc35b1001 [404 Not Found, 1.07kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error GARMENT_NOT_IN_OUTFIT con el formato uniforme
+
+↳ Consultar outfit de otra persona
+  GET http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1 [403 Forbidden, 1kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 403
+  ✓  Error FORBIDDEN_RESOURCE con el formato uniforme
+
+↳ Eliminar outfit
+  DELETE http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1 [204 No Content, 806B, 5ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 204
+
+↳ Consultar outfit eliminado
+  GET http://localhost:3000/api/v1/outfits/2f5c5d30-5196-46bd-aff3-1dd7beee1df1 [404 Not Found, 978B, 2ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 404
+  ✓  Error NOT_FOUND con el formato uniforme
+
+❏ 5. Look Match
+↳ Pedir propuestas (ejemplo del README)
+  POST http://localhost:3000/api/v1/recommendations/look-match [200 OK, 4.92kB, 4ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Devuelve entre una y tres propuestas con etiquetas distintas
+  ✓  Todas caben en el presupuesto y sin chaquetas
+  ✓  Cada propuesta explica su puntaje
+
+↳ Pedir propuestas con presupuesto insuficiente
+  POST http://localhost:3000/api/v1/recommendations/look-match [422 Unprocessable Entity, 1.34kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 422
+  ✓  Error NO_MATCH_FOUND con el formato uniforme
+  ✓  Informa el costo del look más económico
+
+↳ Pedir la opción más cercana fuera del presupuesto
+  POST http://localhost:3000/api/v1/recommendations/look-match [200 OK, 2.42kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  Devuelve una sola opción marcada como sobre el presupuesto
+
+↳ Pedir propuestas excluyendo los zapatos
+  POST http://localhost:3000/api/v1/recommendations/look-match [422 Unprocessable Entity, 1.22kB, 6ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 422
+  ✓  Error NO_MATCH_FOUND con el formato uniforme
+  ✓  Dice qué categoría falta
+
+↳ Crear outfit para la propuesta
+  POST http://localhost:3000/api/v1/outfits [201 Created, 1.34kB, 7ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 201
+
+↳ Aplicar la propuesta al outfit
+  POST http://localhost:3000/api/v1/outfits/e5204ac6-cfd6-4fe8-9133-15f0bbba0758/apply-recommendation [200 OK, 1.8kB, 11ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Responde 200
+  ✓  El outfit queda completo con las prendas de la propuesta
+
+↳ Aplicar una propuesta con prendas repetidas
+  POST http://localhost:3000/api/v1/outfits/e5204ac6-cfd6-4fe8-9133-15f0bbba0758/apply-recommendation [400 Bad Request, 1.1kB, 3ms]
+  ✓  Responde en menos de 2 segundos
+  ✓  Los errores usan JSON
+  ✓  Responde 400
+  ✓  Error VALIDATION_ERROR con el formato uniforme
+
+┌─────────────────────────┬───────────────────┬──────────────────┐
+│                         │          executed │           failed │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│              iterations │                 1 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│                requests │                64 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│            test-scripts │               128 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│      prerequest-scripts │                 3 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│              assertions │               224 │                0 │
+├─────────────────────────┴───────────────────┴──────────────────┤
+│ total run duration: 2.5s                                       │
+├────────────────────────────────────────────────────────────────┤
+│ total data received: 86.13kB (approx)                          │
+├────────────────────────────────────────────────────────────────┤
+│ average response time: 24ms [min: 1ms, max: 274ms, s.d.: 69ms] │
+└────────────────────────────────────────────────────────────────┘
